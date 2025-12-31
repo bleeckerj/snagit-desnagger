@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv
+env/
+venv/
+.DS_Store
+extracted_images/
+output/
+*.snagx
+.vscode/
+.github/
+
