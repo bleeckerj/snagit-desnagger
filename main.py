@@ -4,7 +4,7 @@ import argparse
 import re
 from datetime import datetime
 from src.analyzer import analyze_file
-from src.extractor import extract_snagx
+from src.extractor import extract_snagx, process_media_file, get_date_from_filename
 
 def parse_date_arg(date_str):
     """Parses YYYY-MM-DD string to datetime object."""
@@ -14,30 +14,19 @@ def parse_date_arg(date_str):
         print(f"Error: Invalid date format '{date_str}'. Use YYYY-MM-DD.")
         sys.exit(1)
 
-def get_date_from_filename(filename):
-    """
-    Extracts date from filename assuming format YYYY-MM-DD_HH-MM-SS.snagx
-    Returns datetime object or None.
-    """
-    # Match YYYY-MM-DD pattern at start of filename
-    match = re.search(r'(\d{4}-\d{2}-\d{2})', filename)
-    if match:
-        try:
-            return datetime.strptime(match.group(1), "%Y-%m-%d")
-        except ValueError:
-            pass
-    return None
-
 def process_directory(directory, output_dir, start_date=None, end_date=None, force=False):
     """
-    Processes all .snagx files in the directory.
+    Processes all .snagx and video files in the directory.
     If start_date or end_date is provided, filters by that range (excluding non-dated files).
     If NO date range is provided, ONLY processes non-dated files.
     """
-    files = [f for f in os.listdir(directory) if f.lower().endswith('.snagx')]
+    # Supported extensions
+    extensions = ('.snagx', '.mp4', '.mov', '.avi', '.mkv')
+    
+    files = [f for f in os.listdir(directory) if f.lower().endswith(extensions)]
     files.sort()
     
-    print(f"Found {len(files)} .snagx files in {directory}")
+    print(f"Found {len(files)} supported files in {directory}")
     
     processed_count = 0
     skipped_date_parse = 0
@@ -67,7 +56,13 @@ def process_directory(directory, output_dir, start_date=None, end_date=None, for
                 continue
         
         print(f"Processing {filename}...")
-        extract_snagx(file_path, output_dir, force=force)
+        
+        if filename.lower().endswith('.snagx'):
+            extract_snagx(file_path, output_dir, force=force)
+        else:
+            # Handle video/raw files
+            process_media_file(file_path, output_dir, force=force)
+            
         processed_count += 1
         
     print(f"\nBatch processing complete.")

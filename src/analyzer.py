@@ -58,13 +58,14 @@ def analyze_file(file_path):
             b'BM': 'BMP',
             b'II*\x00': 'TIFF (Intel)',
             b'MM\x00*': 'TIFF (Motorola)',
-            b'RIFF': 'RIFF Container (Potential WEBP)',
+            b'RIFF': 'RIFF Container (Potential WEBP/AVI)',
             b'PK\x03\x04': 'ZIP Local File Header',
+            b'\x1a\x45\xdf\xa3': 'MKV/WebM',
         }
 
         found_images = []
 
-        print("\n--- Scanning for Image Signatures ---")
+        print("\n--- Scanning for Image/Video Signatures ---")
         for sig, format_name in signatures.items():
             start = 0
             while True:
@@ -100,9 +101,30 @@ def analyze_file(file_path):
                 found_images.append(image_info)
                 start = index + 1
         
+        # Check for MP4/MOV ftyp atom (usually at offset 4)
+        # We look for 'ftyp' string
+        start = 0
+        while True:
+            index = data.find(b'ftyp', start)
+            if index == -1:
+                break
+            # ftyp usually starts at offset 4, so the atom start is index - 4
+            if index >= 4:
+                atom_start = index - 4
+                # Verify size is reasonable (usually > 0)
+                try:
+                    atom_size = struct.unpack('>I', data[atom_start:atom_start+4])[0]
+                    if atom_size > 0:
+                        subtype = data[index+4:index+8]
+                        print(f"Found MP4/MOV 'ftyp' atom at offset: {atom_start} (0x{atom_start:x}). Subtype: {subtype}")
+                        found_images.append({'format': f'MP4/MOV ({subtype})', 'offset': atom_start})
+                except:
+                    pass
+            start = index + 1
+
         if not found_images:
-            print("No obvious image signatures found.")
+            print("No obvious image/video signatures found.")
         else:
-            print(f"\nFound {len(found_images)} potential image start points.")
+            print(f"\nFound {len(found_images)} potential start points.")
 
 
